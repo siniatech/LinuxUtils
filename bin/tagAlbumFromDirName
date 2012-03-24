@@ -1,0 +1,127 @@
+#!/usr/bin/perl
+
+# ################################################################
+# Copyright [2006-7] [Simon Fraser/Siniatech Ltd]
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ################################################################
+
+# ################################################################
+# tagAlbumFromDirName
+#
+# Assuming a directory structure of ../artist/album/tracks the
+# script will update v2 tags with the artist and album details
+# derived from that structure.
+#
+# Author:    Simon Fraser
+#            simon@siniatech.com
+# Version:   1.0
+# Date:      2007-03-12
+# Source:    http://github.com/siniatech/linuxUtils
+#
+# Changes:   1.1 - Delete v1 tag after use
+#            1.0 - Initial Version
+# ################################################################
+
+use strict;
+
+use Cwd;
+use MP3::Tag;
+use File::Spec;
+
+my $cwd= &cwd();
+my $various= "";
+
+# allow special case to handle albums with various artists
+if ($ARGV[0] eq "-v") {
+  shift @ARGV;
+  $various= shift @ARGV;
+} elsif ($ARGV[0] eq "--help") {
+  print "Usage: $0 [-v artist_name] albumdir\n";
+  print "\n";
+  print "Options:\n";
+  print "\t-v artist_name\tSpecifies a specific name for which artist "
+        . "substitutions will not be made (e.g. 'Various').\n";
+  print "\n";
+  print "Purpose:\n";
+  print "Assuming a directory structure of ../artist/album/tracks the "
+        . "script will update v2 tags with the artist and album details "
+        . "derived from that structure.\n";
+  print "\n";
+}
+
+for my $file (@ARGV) {
+
+  # determine absolute path of album
+  my $absAlbum= 
+      ($file =~ /^\//)
+      ? $file
+      : File::Spec->catfile($cwd, $file);
+  $absAlbum =~ s/\/$//;
+  next if not(-d $absAlbum);
+
+  # determine artist and album name from path
+  my @directories= File::Spec->splitdir($absAlbum);
+  my $album= @directories[-1];
+  my $artist= @directories[-2];
+  next if $album =~ /^\.+/;
+
+  print "Processing $artist - $album...";
+  
+  opendir my $tfh, $absAlbum;
+  for my $track (readdir $tfh) {
+    next if not($track =~ /mp3$/);
+
+    # retrieve existing tags for each track
+    my $mp3= MP3::Tag->new(File::Spec->catfile($absAlbum,$track));
+    $mp3->get_tags();
+    my $id3v2;
+    if (exists $mp3->{ID3v2}) {
+      $id3v2= $mp3->{ID3v2};
+    } else {
+      $id3v2= $mp3->new_tag("ID3v2");
+      if (exists $mp3->{ID3v1}) {
+        # if no v2 tag, copy existing v1 details
+        my $id3v1= $mp3->{ID3v1};
+        $id3v2->add_frame("TIT2", $id3v1->title);
+        $id3v2->add_frame("TYER", $id3v1->year);
+        $id3v2->add_frame("TRCK", $id3v1->track);
+        $id3v2->add_frame("TPE1", $id3v1->artist);
+        $id3v2->add_frame("TCON", $id3v1->genre);
+      }
+    }
+
+    # write new album and artist details (where applicable)
+    my %frames= %{ $id3v2->get_frame_ids('truename') };
+    if (exists $frames{"TALB"}) {
+      $id3v2->change_frame("TALB", $album);
+    } else {
+      $id3v2->add_frame("TALB", $album);
+    }
+    if ($artist ne $various) {
+      if (exists $frames{"TPE1"}) {
+        $id3v2->change_frame("TPE1", $artist);
+      } else {
+        $id3v2->add_frame("TPE1", $artist);
+      }
+    }
+    $id3v2->write_tag;
+
+    # delete any v1 tag
+    if (exists $mp3->{ID3v1}) {
+      $mp3->delete_tag("ID3v1");
+    }
+  }
+
+  print " complete.\n";
+}

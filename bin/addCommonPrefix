@@ -1,0 +1,56 @@
+#!/usr/bin/perl
+
+# ################################################################
+# Copyright [2006-7] [Simon Fraser/Siniatech Ltd]
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ################################################################
+
+# ################################################################
+# addCommonPrefix
+#
+# Adds a prefix to all the filenames of the specified files 
+#
+# Author:    Simon Fraser
+#            simon@siniatech.com
+# Version:   1.2
+# Date:      2007-03-08
+# Source:    http://github.com/siniatech/LinuxUtils
+#
+# Changes:   1.2 - Changed from single to double quotes in move
+#                  command.
+#            1.1 - Files specified on command line rather than 
+#                  all files in current directory.
+#            1.0 - Initial version.
+# ################################################################
+
+use strict;
+
+my $prefix= shift @ARGV;
+
+if ($prefix eq "")
+  {
+	print STDERR "Usage:\n";
+	print STDERR "$0 <prefix> <files>\n\n";
+	exit(-1);
+  }
+
+print STDOUT "Using prefix: $prefix\n";
+
+for my $file (@ARGV)
+  {
+	print("mv \"$file\" \"$prefix$file\"\n");
+	system("mv \"$file\" \"$prefix$file\"");
+  }
+
+	

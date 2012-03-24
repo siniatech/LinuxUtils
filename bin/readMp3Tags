@@ -1,0 +1,70 @@
+#!/usr/bin/perl
+
+# ################################################################
+# Copyright [2006-7] [Simon Fraser/Siniatech Ltd]
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ################################################################
+
+# ################################################################
+# readMp3Tags
+#
+# Reads and reports the values of the tags for any mp3 files passed
+# into the script.
+#
+# Author:    Simon Fraser
+#            simon@siniatech.com
+# Version:   1.1
+# Date:      2007-03-12
+# Source:    http://github.com/siniatech/linuxUtils
+#
+# Changes:   1.1 - Made file extension check case insensitive
+#            1.0 - Initial Version
+# ################################################################
+
+use strict;
+
+use MP3::Tag;
+  
+for my $file (@ARGV) {
+  next if not(-f $file);
+  next if not($file =~ /mp3$/i);
+  
+  my $mp3= MP3::Tag->new(File::Spec->catfile($file)) or next;
+  $mp3->get_tags() or next;
+  print "\n========= $file =========\n";
+
+  if (exists $mp3->{ID3v1}) {
+    my $id3v1= $mp3->{ID3v1};
+    print "\n********* ID3v1 *********\n";
+    print "  Title: " . $id3v1->title . "\n";
+    print " Artist: " . $id3v1->artist . "\n";
+    print "  Album: " . $id3v1->album . "\n";
+    print "Comment: " . $id3v1->comment . "\n";
+    print "   Year: " . $id3v1->year . "\n";
+    print "  Genre: " . $id3v1->genre . "\n";
+    print "  Track: " . $id3v1->track . "\n";
+  }
+
+  if (exists $mp3->{ID3v2}) {
+    my $id3v2= $mp3->{ID3v2};
+    print "\n********* ID3v2 *********\n";
+
+    for my $frame (keys %{ $id3v2->get_frame_ids('truename') }) {
+      my ($name, @info) = $id3v2->get_frame($frame);
+      print $frame, " = ", $name, " (", @info, ")\n";
+    }
+  }
+
+}
+    

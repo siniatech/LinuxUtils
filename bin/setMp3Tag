@@ -1,0 +1,112 @@
+#!/usr/bin/perl
+
+# ################################################################
+# Copyright [2007] [Simon Fraser/Siniatech Ltd]
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ################################################################
+
+# ################################################################
+# setMp3Tag
+#
+# Allows the setting of various tags for the specified files.
+#
+# Author:    Simon Fraser
+#            simon@siniatech.com
+# Version:   1.0
+# Date:      2007-02-18
+# Source:    http://github.com/siniatech/LinuxUtils
+#
+# Changes:   1.0 - Initial Version
+# ################################################################
+
+use strict;
+
+use Cwd;
+use MP3::Tag;
+use File::Spec;
+
+my $artist= "";
+my $album= "";
+
+sub processArgs {
+  my @args= @_;
+  if (@args[0] eq "-ar") {
+    shift @args;
+    $artist= shift @args;
+    return &processArgs(@args);
+  } elsif ($args[0] eq "-al") {
+    shift @args;
+    $album= shift @args;
+    return &processArgs(@args);
+  } else {
+    return @args;
+  }
+}
+
+my @files= &processArgs(@ARGV);
+print "$artist -- $album \n";
+
+for my $file (@files) {
+  print "Processing file $file ...";
+
+  # retrieve existing tags for each track
+  my $mp3= MP3::Tag->new($file);
+  $mp3->get_tags();
+  my $id3v2;
+  if (exists $mp3->{ID3v2}) {
+    $id3v2= $mp3->{ID3v2};
+  } else {
+    $id3v2= $mp3->new_tag("ID3v2");
+    if (exists $mp3->{ID3v1}) {
+      # if no v2 tag, copy existing v1 details
+      my $id3v1= $mp3->{ID3v1};
+      $id3v2->add_frame("TIT2", $id3v1->title);
+      $id3v2->add_frame("TYER", $id3v1->year);
+      $id3v2->add_frame("TRCK", $id3v1->track);
+      $id3v2->add_frame("TPE1", $id3v1->artist);
+      $id3v2->add_frame("TCON", $id3v1->genre);
+    }
+  }
+
+  # write new album and artist details (where applicable)
+  my %frames= %{ $id3v2->get_frame_ids('truename') };
+  if ($album) {
+    if (exists $frames{"TALB"}) {
+      $id3v2->change_frame("TALB", $album);
+    }  else {
+      $id3v2->add_frame("TALB", $album);
+    }
+  }
+  if ($artist) {
+    if (exists $frames{"TPE1"}) {
+      $id3v2->change_frame("TPE1", $artist);
+    } else {
+      $id3v2->add_frame("TPE1", $artist);
+    }
+  }
+  $id3v2->write_tag;
+
+  # delete any v1 tag
+  if (exists $mp3->{ID3v1}) {
+    $mp3->delete_tag("ID3v1");
+  }
+  my $id3v1= $mp3->new_tag("ID3v1");
+  $id3v1->title($id3v2->get_frame("TIT2"));
+  $id3v1->artist($id3v2->get_frame("TPE1"));
+  $id3v1->album($id3v2->get_frame("TALB"));
+  $id3v1->write_tag;
+
+  print "complete.\n";
+}
+
