@@ -38,19 +38,17 @@ use strict;
 
 my $prefix= shift @ARGV;
 
-if ($prefix eq "")
-  {
-	print STDERR "Usage:\n";
-	print STDERR "$0 <prefix> <files>\n\n";
-	exit(-1);
-  }
+if ($prefix eq "") {
+  print STDERR "Usage:\n";
+  print STDERR "$0 <prefix> <files>\n\n";
+  exit(-1);
+}
 
 print STDOUT "Using prefix: $prefix\n";
 
-for my $file (@ARGV)
-  {
-	print("mv \"$file\" \"$prefix$file\"\n");
-	system("mv \"$file\" \"$prefix$file\"");
-  }
+for my $file (@ARGV) {
+  print("mv \"$file\" \"$prefix$file\"\n");
+  system("mv \"$file\" \"$prefix$file\"");
+}
 
 	
