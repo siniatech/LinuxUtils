@@ -1,0 +1,12 @@
+
+set expandtab
+set tabstop=2
+set shiftwidth=2
+set autoindent
+set smartindent
+
+au BufRead,BufNewFile *.scala set filetype=scala
+au! Syntax scala source ~/.vim/syntax/scala.vim
+
+nnoremap <F8> :setl noai nocin nosi inde=<CR>
+
